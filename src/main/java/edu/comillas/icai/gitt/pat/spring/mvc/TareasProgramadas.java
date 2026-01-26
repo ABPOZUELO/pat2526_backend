@@ -45,7 +45,8 @@ public class TareasProgramadas {
             if (response.getStatusCode()== HttpStatus.OK) {
                 String respuesta = response.getBody();
                 logger.info("He recibido respuesta");
-                if (respuesta.compareTo(respuesta_ant)!=0) {
+                assert respuesta != null;
+                if (!respuesta.equals(respuesta_ant)) {
                     logger.info(respuesta);
                 }
                 this.respuesta_ant=respuesta;
