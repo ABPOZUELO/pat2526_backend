@@ -26,5 +26,19 @@ class ControladorRestIntegrationTest {
                 .andExpect(MockMvcResultMatchers.status().isCreated())
                 .andExpect(MockMvcResultMatchers.content().string(contador));
     }
+    @Test
+    void creaContadorIncorrectoTest() throws Exception {
+        // Given
+        String contador = "{\"nombre\":\"\",\"valor\":0}"; // Contador con nombre vacío
+        //String contador = "{\"nombre\":\"visitas\",\"valor\":0}";
+        // When
+        this.mockMvc
+                .perform(MockMvcRequestBuilders.post("/api/contadores")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(contador))
+
+                // Then
+                .andExpect(MockMvcResultMatchers.status().isBadRequest()); // Esperando un estado de error 400
+    }
 }
 
