@@ -1,5 +1,6 @@
 package edu.comillas.icai.gitt.pat.padel.model;
 
-public class Rol {
-    
+public enum Rol {
+    ADMIN,
+    USER
 }
