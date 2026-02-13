@@ -13,7 +13,9 @@ public class Pista {
     private boolean activa;
     private LocalDateTime fechaAlta;
 
-//    Constructor
+//    Constructores
+
+    public Pista() {}
 
     public Pista(int idPista, String nombre, String ubicacion, double precioHora) {
         this.idPista = idPista;
