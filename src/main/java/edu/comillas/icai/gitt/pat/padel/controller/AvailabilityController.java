@@ -1,11 +1,10 @@
 package edu.comillas.icai.gitt.pat.padel.controller;
 
-
 import org.springframework.web.bind.annotation.*;
 
 
 @RestController
-@RequestMapping("/users")
-public class UserController {
+@RequestMapping("/availability")
+public class AvailabilityController {
     
 }
