@@ -1,115 +1,120 @@
 package edu.comillas.icai.gitt.pat.padel.controller;
 
-import edu.comillas.icai.gitt.pat.padel.model.Pista;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.lang.NonNull;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import edu.comillas.icai.gitt.pat.padel.BaseController;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import jakarta.validation.Valid;
+import edu.comillas.icai.gitt.pat.padel.entity.EstadosReserva;
+import edu.comillas.icai.gitt.pat.padel.entity.Pista;
+import edu.comillas.icai.gitt.pat.padel.repositorios.RepoPista;
+import edu.comillas.icai.gitt.pat.padel.repositorios.RepoReserva;
 
+import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/pistaPadel/courts")
-public class CourtController extends BaseController {
+public class CourtController {
 
-//    Hashmap para almacenar las pistas de pádel, con el id de la pista como clave y la pista como valor
-    private static Map<Integer, Pista> pistas = new HashMap<>();
+    @Autowired
+    private RepoPista repoPista;
 
-//    GET /pistaPadel/courts
+    @Autowired
+    private RepoReserva repoReserva;
+
+    // GET /pistaPadel/courts
     @GetMapping
-//    OK 200 OK: Lista de pistas de pádel
-    public Collection<Pista> getPistas(){
-        return pistas.values();
+    public Iterable<Pista> getPistas(@RequestParam(required = false) Boolean active){
+        System.out.println("Valor del parámetro 'active': " + active);
+        if (active != null) {
+            return repoPista.findByActiva(active);
+        }
+        return repoPista.findAll();
     }
 
-//    POST /pistaPadel/courts
+    // POST /pistaPadel/courts
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Pista createPista(@RequestBody Pista pista){
-//        ERROR 400 BAD REQUEST: Datos inválidos (nombre vacío, precio negativo)
-        if (pista.getNombre() == null || pista.getNombre().isEmpty() || pista.getPrecioHora() < 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Datos de la pista incorrectos");
+    @PreAuthorize("hasAuthority('ADMIN')") // Solo los admins pueden crear pistas
+    public Pista createPista(@RequestBody @Valid Pista pista){
+        // Validar que no exista una pista con el mismo nombre
+        Pista pistaExistente = repoPista.findByNombreIgnoreCase(pista.nombre);
+        if (pistaExistente != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Ya existe una pista con el nombre '" + pista.nombre + "'");
         }
-//        ERROR 409 CONFLICT: Pista con el mismo ID ya existe
-        if (pistas.containsKey(pista.getIdPista())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Pista con el mismo ID ya existe");
-        }
-//        ERROR 409 CONFLICT: Pista con el mismo nombre ya existe
-        for (Pista p : pistas.values()) {
-            if (p.getNombre().equalsIgnoreCase(pista.getNombre())) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Pista con el mismo nombre ya existe");
-            }
-        }
-//        OK 201 CREATED: Pista creada exitosamente
-        pistas.put(pista.getIdPista(), pista);
+        
+        return repoPista.save(pista);
+    }
+
+    // GET /pistaPadel/courts/{id}
+    @GetMapping("/{id}")
+    public Pista getPista(@PathVariable @NonNull Long id){
+        Pista pista = repoPista.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pista no encontrada"));
+        
         return pista;
     }
 
-//    GET /pistaPadel/courts/{id}
-    @GetMapping("/{id}")
-    public Pista getPista(@PathVariable int id){
-//        ERROR 404 NOT FOUND: Pista no encontrada
-        if (!pistas.containsKey(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Pista no encontrada");
-        }
-//        OK 200 OK: Detalles de la pista de pádel
-        return pistas.get(id);
-    }
-
-//    DELETE /pistaPadel/courts/{id}
+    // DELETE /pistaPadel/courts/{id}
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('ADMIN')") // Solo los admins pueden eliminar pistas
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deletePista(@PathVariable int id){
-//        ERROR 404 NOT FOUND: Pista no encontrada
-        if (!pistas.containsKey(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Pista no encontrada");
+    public void deletePista(@PathVariable @NonNull Long id){
+        Pista pista = repoPista.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pista no encontrada"));
+        
+        
+        // Verificar que no tenga reservas futuras activas
+        boolean tieneReservasFuturas = repoReserva.existsByIdPistaAndEstadoActivoAndHoraFinGreaterThanEqual(
+            id, 
+            EstadosReserva.ACTIVA, 
+            LocalDateTime.now()
+        );
+        
+        if (tieneReservasFuturas) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "No se puede eliminar la pista porque tiene reservas futuras");
         }
-//        ERROR 409 CONFLICT: Pista con reservas futuras
-        // Aquí se debería verificar si la pista tiene reservas futuras antes de eliminarla
-//        OK 204 NO CONTENT: Pista eliminada exitosamente
-        pistas.remove(id);
+        
+        pista.activa = false;
+        repoPista.save(pista);
+        
     }
 
-//    PATCH /pistaPadel/courts/{id}
+    // PATCH /pistaPadel/courts/{id}
     @PatchMapping("/{id}")
-    public Pista updatePista(@PathVariable int id, @RequestBody Pista datosNuevos){
-        Pista pistaExistente = pistas.get(id);
+    @PreAuthorize("hasAuthority('ADMIN')") // Solo los admins pueden actualizar pistas
+    @SuppressWarnings("null")
+    public Pista updatePista(@PathVariable @NonNull Long id, @RequestBody Pista datosNuevos){
+        Pista pistaExistente = repoPista.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pista no encontrada"));
 
-//        ERROR 400 BAD REQUEST: Datos inválidos (nombre vacío, precio negativo)
-        if (datosNuevos.getNombre() != null && datosNuevos.getNombre().isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El nombre no puede estar vacío");
-        }
-        if (datosNuevos.getPrecioHora() < 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El precio no puede ser negativo");
-        }
-//        ERROR 404 NOT FOUND: Pista no encontrada
-        if (pistaExistente == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Pista no encontrada");
-        }
-//        OK 200 OK: Pista actualizada exitosamente
-        if (pistaExistente != null) {
-            if (datosNuevos.getNombre() != null) {
-                pistaExistente.setNombre(datosNuevos.getNombre());
+        // Validar datos si se proporcionan
+        if (datosNuevos.nombre != null && !datosNuevos.nombre.isBlank()) {
+            // Validar que no exista otra pista con el mismo nombre
+            Pista pistaConMismoNombre = repoPista.findByNombreIgnoreCase(datosNuevos.nombre);
+            if (pistaConMismoNombre != null && !pistaConMismoNombre.idPista.equals(id)) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Ya existe otra pista con el nombre '" + datosNuevos.nombre + "'");
             }
-            if (datosNuevos.getUbicacion() != null) {
-                pistaExistente.setUbicacion(datosNuevos.getUbicacion());
-            }
-            if (datosNuevos.getPrecioHora() != 0) {
-                pistaExistente.setPrecioHora(datosNuevos.getPrecioHora());
-            }
-            pistaExistente.setActiva(datosNuevos.isActiva());
+            pistaExistente.nombre = datosNuevos.nombre;
         }
-        return pistaExistente;
-    }
-    public static boolean existePista(int idPista){
-        return pistas.containsKey(idPista);
-    }
+        if (datosNuevos.ubicacion != null && !datosNuevos.ubicacion.isBlank()) {
+            pistaExistente.ubicacion = datosNuevos.ubicacion;
+        }
+        
+        if (datosNuevos.precioHora != null) {
+            if (!(datosNuevos.precioHora > 0)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El precio por hora debe ser mayor que 0");
+            }
+            pistaExistente.precioHora = datosNuevos.precioHora;
+        }
+        
+        if (datosNuevos.activa != null && datosNuevos.activa == true) { // Solo se puede activar una pista, para desactivar una pista se debe usar el DELETE
+            pistaExistente.activa = datosNuevos.activa;
+        }
 
-    public static Pista obtenerPista(int idPista){
-        return pistas.get(idPista);
+        return repoPista.save(pistaExistente);
     }
 }

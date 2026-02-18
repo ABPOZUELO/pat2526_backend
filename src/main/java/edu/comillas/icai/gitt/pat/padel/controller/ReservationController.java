@@ -1,7 +1,6 @@
 package edu.comillas.icai.gitt.pat.padel.controller;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
 
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -9,39 +8,88 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
-import edu.comillas.icai.gitt.pat.padel.BaseController;
-import edu.comillas.icai.gitt.pat.padel.model.Reserva;
+import edu.comillas.icai.gitt.pat.padel.entity.Reserva;
+import edu.comillas.icai.gitt.pat.padel.entity.Rol;
+import edu.comillas.icai.gitt.pat.padel.entity.Usuario;
+import edu.comillas.icai.gitt.pat.padel.repositorios.RepoReserva;
+import edu.comillas.icai.gitt.pat.padel.repositorios.RepoUsuario;
+import edu.comillas.icai.gitt.pat.padel.repositorios.RepoPista;
 
 @RestController
 
-@RequestMapping("/reservations")
-public class ReservationController extends BaseController {
-    private HashMap<Integer, Reserva> reservas =  new HashMap<>();
+@RequestMapping("/pistaPadel/reservations")
+public class ReservationController {
 
-    private int contadorIdReserva = 1;
+    @Autowired
+    private RepoReserva repoReserva;
 
-    @PostMapping    
+    @Autowired
+    private RepoUsuario RepoUsuario;
+
+    @Autowired
+    private RepoPista RepoPista;
+
+    // Crear reserva: POST /pistaPadel/reservations
+    @PostMapping
     @ResponseStatus(HttpStatus.CREATED)//Si todo va bien devolver un "201 Created" por defecto, NO un "200 OK"
     public Reserva crearReserva(@RequestBody Reserva reserva){
-        if(reserva.getCourtId() <= 0 || reserva.getDate() == null){
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rellene todos los campos obligatorios (courtId y date)");   //Error 400 y sale del metodo
-        }
-        if(CourtController.existePista(reserva.getCourtId()) == false){     //Al ser el metodo "existePista" static se puede llamar directamente con el nombre de la clase "CourtController"
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "La pista introducida NO existe"); //Error 404
+        // Obtener el usuario autenticado
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String emailUsuarioAutenticado = authentication.getName();
+        Usuario usuarioAutenticado = RepoUsuario.findByEmail(emailUsuarioAutenticado);
+
+        // Lógica para asignar el idUsuario según el rol
+        if (usuarioAutenticado.rol == Rol.ADMIN) {
+            // Si es admin y no ha proporcionado idUsuario, usar su propio ID
+            if (reserva.idUsuario == null) {
+                reserva.idUsuario = usuarioAutenticado.id;
+            }
+            // Si es admin y ha proporcionado idUsuario, validar que exista
+            else if (RepoUsuario.findById(reserva.idUsuario).isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "El usuario con id " + reserva.idUsuario + " no existe");
+            }
+        } else {
+            // Si no es admin, siempre usar su propio ID (ignorar cualquier idUsuario proporcionado)
+            reserva.idUsuario = usuarioAutenticado.id;
         }
 
-        // ERROR 409 CONFLICT: Horario ya ocupado
-        for(Reserva r : reservas.values()){
-            if(r.getDate().equals(reserva.getDate()) && r.getCourtId() == reserva.getCourtId()){
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Esta pista ya esta ocupada para el horario introducido");
-            }
+        // Calcular horaFin manualmente antes de las validaciones
+        if (reserva.horaInicio != null && reserva.duracionMinutos != null) {
+            reserva.horaFin = reserva.horaInicio.plusMinutes(reserva.duracionMinutos);
         }
-        reserva.setIdReserva(contadorIdReserva);
-        contadorIdReserva++;
-        reservas.put(reserva.getIdReserva(), reserva);
-        return reserva;
+
+        // Validar que la hora de inicio sea anterior a la hora de fin
+        if (reserva.horaInicio.isAfter(reserva.horaFin) || reserva.horaInicio.isEqual(reserva.horaFin)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La hora de inicio debe ser anterior a la hora de fin");
+        }
+
+        // Validar que exista la pista
+        if (reserva.idPista == null || RepoPista.findById(reserva.idPista).isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "La pista con id " + reserva.idPista + " no existe");
+        }
+
+        // Validar que la reserva no se solape con otras reservas activas para la misma pista
+        LocalDateTime inicio = reserva.horaInicio;
+        LocalDateTime fin = reserva.horaFin;
+        Long pistaId = reserva.idPista;
+
+        boolean solapamiento = repoReserva.existsByIdPistaAndEstadoActivoAndHoraInicioLessThanEqualAndHoraFinGreaterThanEqual(
+            pistaId, 
+            reserva.estadoActivo, 
+            fin, 
+            inicio
+        );
+
+        if (solapamiento) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "La reserva se solapa con otra reserva activa para la misma pista");
+        }
+
+        return repoReserva.save(reserva);
     }
 
 
