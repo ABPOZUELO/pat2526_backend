@@ -17,7 +17,7 @@ import java.util.Map;
 public class CourtController extends BaseController {
 
 //    Hashmap para almacenar las pistas de pádel, con el id de la pista como clave y la pista como valor
-    private Map<Integer, Pista> pistas = new HashMap<>();
+    private static Map<Integer, Pista> pistas = new HashMap<>();
 
 //    GET /pistaPadel/courts
     @GetMapping
@@ -104,5 +104,12 @@ public class CourtController extends BaseController {
             pistaExistente.setActiva(datosNuevos.isActiva());
         }
         return pistaExistente;
+    }
+    public static boolean existePista(int idPista){
+        return pistas.containsKey(idPista);
+    }
+
+    public static Pista obtenerPista(int idPista){
+        return pistas.get(idPista);
     }
 }
