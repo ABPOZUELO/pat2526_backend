@@ -1,37 +1,37 @@
 package edu.comillas.icai.gitt.pat.padel.repositorios;
 
 import org.springframework.data.repository.CrudRepository;
+import edu.comillas.icai.gitt.pat.padel.entity.Reserva;
+import edu.comillas.icai.gitt.pat.padel.entity.EstadosReserva;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import edu.comillas.icai.gitt.pat.padel.entity.EstadosReserva;
-import edu.comillas.icai.gitt.pat.padel.entity.Reserva;
+public interface RepoReserva extends CrudRepository<Reserva, Long> {
 
-public interface RepoReserva extends CrudRepository<Reserva, Long>{
-    boolean existsByIdPistaAndEstadoActivoAndHoraInicioLessThanEqualAndHoraFinGreaterThanEqual(Long pistaId, EstadosReserva estado, LocalDateTime horaFin, LocalDateTime horaInicio);
-    
-    boolean existsByIdPistaAndEstadoActivoAndHoraFinGreaterThanEqual(Long pistaId, EstadosReserva estado, LocalDateTime horaInicio);
-    
-    List<Reserva> findByIdPistaAndEstadoActivoAndHoraInicioGreaterThanEqualAndHoraInicioLessThanOrderByHoraInicioAsc(
-        Long pistaId, EstadosReserva estado, LocalDateTime inicioDelDia, LocalDateTime finDelDia);
-    
-    // Métodos para filtrar reservas (endpoint admin)
+    // El método que usa TU controlador
+    boolean existsByIdPistaAndEstadoAndHoraInicioLessThanEqualAndHoraFinGreaterThanEqual(
+            Long idPista, EstadosReserva estado, LocalDateTime horaFin, LocalDateTime horaInicio
+    );
+
+    // El método que falta y que hace que falle el CourtController
+    boolean existsByIdPistaAndEstadoActivoAndHoraFinGreaterThanEqual(
+            Long idPista, EstadosReserva estado, LocalDateTime horaFin
+    );
+
+    // Métodos para el AdminController que ya pusimos antes
     List<Reserva> findByIdPistaAndIdUsuarioAndHoraInicioGreaterThanEqualAndHoraInicioLessThan(
-        Long courtId, Long userId, LocalDateTime inicioDelDia, LocalDateTime finDelDia);
-    
+            Long idPista, Long idUsuario, LocalDateTime inicio, LocalDateTime fin
+    );
     List<Reserva> findByIdPistaAndHoraInicioGreaterThanEqualAndHoraInicioLessThan(
-        Long courtId, LocalDateTime inicioDelDia, LocalDateTime finDelDia);
-    
+            Long idPista, LocalDateTime inicio, LocalDateTime fin
+    );
     List<Reserva> findByIdUsuarioAndHoraInicioGreaterThanEqualAndHoraInicioLessThan(
-        Long userId, LocalDateTime inicioDelDia, LocalDateTime finDelDia);
-    
-    List<Reserva> findByIdPistaAndIdUsuario(Long courtId, Long userId);
-    
+            Long idUsuario, LocalDateTime inicio, LocalDateTime fin
+    );
     List<Reserva> findByHoraInicioGreaterThanEqualAndHoraInicioLessThan(
-        LocalDateTime inicioDelDia, LocalDateTime finDelDia);
-    
-    List<Reserva> findByIdPista(Long courtId);
-    
-    List<Reserva> findByIdUsuario(Long userId);
+            LocalDateTime inicio, LocalDateTime fin
+    );
+    List<Reserva> findByIdPistaAndIdUsuario(Long idPista, Long idUsuario);
+    List<Reserva> findByIdPista(Long idPista);
+    List<Reserva> findByIdUsuario(Long idUsuario);
 }
-
