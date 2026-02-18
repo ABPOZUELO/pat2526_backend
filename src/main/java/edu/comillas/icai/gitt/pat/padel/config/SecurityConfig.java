@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -13,6 +14,7 @@ import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity // Habilita @PreAuthorize, @PostAuthorize, @Secured, etc.
 public class SecurityConfig {
 
     @Bean
@@ -40,10 +42,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/pistaPadel/auth/login").permitAll()
                 
                 // H2 Console - solo ADMIN autenticado
-                .requestMatchers("/h2-console/**").hasRole("ADMIN")
+                .requestMatchers("/h2-console/**").hasAuthority("ADMIN")
                 
                 // Endpoints de auth que requieren autenticación
-                .requestMatchers(HttpMethod.POST, "/pistaPadel/courts").hasAuthority("ADMIN") // Solo ADMIN puede crear pistas
                 .requestMatchers(HttpMethod.POST, "/pistaPadel/auth/logout").authenticated()
                 .requestMatchers(HttpMethod.GET, "/pistaPadel/auth/me").authenticated()
                 

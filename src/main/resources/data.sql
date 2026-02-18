@@ -1,0 +1,3 @@
+INSERT INTO USUARIOS (email, rol, nombre, apellidos, password, telefono) VALUES ('prueba@gmail.com', 'ADMIN', 'Admin', 'Usuario', '$2a$10$59xPJygawrJkzJG.gZ2DgeikJB1lA1VMBQacc2vD0ml1MTFIS.x1q', '123456789');
+INSERT INTO USUARIOS (email, rol, nombre, apellidos, password, telefono) VALUES ('user@gmail.com', 'USER', 'Usuario', 'Usuario', '$2a$10$iUDzJygc2.XCBC5fWMtN9ehrAwf8Y7mvfYB7ChJIdvnTp3r9Y0bdq', '123456789');
+INSERT INTO pista (nombre, activa, ubicacion, precio_hora, fecha_alta) VALUES ('Pista 1', 0, 'Ubicación 1', 2.5, '2026-02-18 11:27:50.34314');

@@ -54,3 +54,4 @@ public class Usuario {
   public Boolean activo = true; // Por defecto activo
 }
 
+// INSERT INTO USUARIOS (email, rol, nombre, apellidos, password, telefono) VALUES ('prueba@gmail.com', 'USER', 'Prueba', 'Usuario', '$2a$12$vXrVT3YmVTzcdqTUdQfd6.c2XCUCtceXetWsvwoJMMgLnhDqpjzp.', '123456789');

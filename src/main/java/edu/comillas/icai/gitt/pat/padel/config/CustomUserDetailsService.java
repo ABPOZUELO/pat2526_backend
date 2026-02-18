@@ -34,7 +34,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         return User.builder()
                 .username(usuario.email)
                 .password(usuario.password)
-                .authorities(Collections.singleton(new SimpleGrantedAuthority("ROLE_" + usuario.rol.name())))
+                .authorities(Collections.singleton(new SimpleGrantedAuthority(usuario.rol.name())))
                 .accountExpired(false)
                 .accountLocked(false)
                 .credentialsExpired(false)

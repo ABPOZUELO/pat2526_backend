@@ -2,6 +2,9 @@ package edu.comillas.icai.gitt.pat.padel.entity;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import jakarta.annotation.Generated;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -11,9 +14,9 @@ import jakarta.validation.constraints.NotNull;
 public class Pista {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    public Integer idPista;
+    public Long idPista;
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     @NotBlank(message = "El nombre de la pista no puede estar vacío")
     public String nombre;
     
@@ -30,7 +33,9 @@ public class Pista {
     @NotNull(message = "El estado activo no puede estar vacío")
     public Boolean activa;
     
-    @Column(nullable = false)
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    @Generated(value = "org.hibernate.annotations.GenerationTime.INSERT")
     @NotNull(message = "La fecha de alta no puede estar vacía")
-    public LocalDateTime fechaAlta;
+    @Column(nullable = false)
+    public LocalDateTime fechaAlta = LocalDateTime.now(); // Se asigna la fecha actual al crear el usuario
 }
