@@ -30,7 +30,7 @@ public class AuthController {
 
     @Autowired
     private BCryptPasswordEncoder passwordEncoder;
-    
+
     @Autowired
     private AuthenticationManager authenticationManager;
 
@@ -40,6 +40,11 @@ public class AuthController {
         if(repoUsuario.findByEmail(usuarioNuevo.email) != null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "El email ya está registrado");
         }
+
+        // BLINDAJE: Forzamos que el usuario nuevo sea ROL.USER y esté activo
+        usuarioNuevo.rol = edu.comillas.icai.gitt.pat.padel.entity.Rol.USER;
+        usuarioNuevo.activo = true;
+
         usuarioNuevo.password = passwordEncoder.encode(usuarioNuevo.password);
         return repoUsuario.save(usuarioNuevo);
     }
@@ -48,37 +53,34 @@ public class AuthController {
     public ResponseEntity<Map<String, Object>> login(@RequestBody Usuario usuarioLogin, HttpServletRequest request) {
         try {
             Usuario usuario = repoUsuario.findByEmail(usuarioLogin.email);
-            
+
             if (usuario == null || !usuario.activo) {
                 throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas o el usuario está deshabilitado");
             }
-            
-            // Autenticar con Spring Security
+
             Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                    usuarioLogin.email, 
-                    usuarioLogin.password
-                )
+                    new UsernamePasswordAuthenticationToken(
+                            usuarioLogin.email,
+                            usuarioLogin.password
+                    )
             );
-            
-            // Establecer el contexto de seguridad
+
             SecurityContextHolder.getContext().setAuthentication(authentication);
-            
-            // Crear sesión HTTP
+
             HttpSession session = request.getSession(true);
             session.setAttribute("SPRING_SECURITY_CONTEXT", SecurityContextHolder.getContext());
-            
+
             Map<String, Object> response = new HashMap<>();
             response.put("message", "Login exitoso");
             response.put("sessionId", session.getId());
-            
+
             return ResponseEntity.ok(response);
-            
+
         } catch (BadCredentialsException e) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
         }
     }
-    
+
     @PostMapping("/logout")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void logout(HttpServletRequest request) {
@@ -88,22 +90,22 @@ public class AuthController {
         }
         SecurityContextHolder.clearContext();
     }
-    
+
     @GetMapping("/me")
     public Usuario getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        
+
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No autenticado");
         }
-        
+
         String email = authentication.getName();
         Usuario usuario = repoUsuario.findByEmail(email);
-        
+
         if (usuario == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado");
         }
-        
-        return usuario;        
+
+        return usuario;
     }
 }

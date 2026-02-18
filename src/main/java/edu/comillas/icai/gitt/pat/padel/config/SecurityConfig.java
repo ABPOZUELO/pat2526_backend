@@ -43,6 +43,7 @@ public class SecurityConfig {
 
 
                         .requestMatchers("/h2-console/**").permitAll()
+                        .requestMatchers("/pistaPadel/availability/**").permitAll()
 
 
                         // Endpoints de auth que requieren autenticación

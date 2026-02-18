@@ -15,6 +15,10 @@ import edu.comillas.icai.gitt.pat.padel.entity.EstadosReserva;
 import edu.comillas.icai.gitt.pat.padel.repositorios.RepoUsuario;
 import edu.comillas.icai.gitt.pat.padel.repositorios.RepoPista;
 
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
 @RestController
 @RequestMapping("/pistaPadel/reservations")
 public class ReservationController {
@@ -26,13 +30,31 @@ public class ReservationController {
     @Autowired
     private RepoPista repoPista;
 
+    // NUEVO MÉTODO: Para que los usuarios vean "Mis Reservas"
+    @GetMapping
+    public List<Reserva> obtenerMisReservas() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        Usuario usuarioAutenticado = repoUsuario.findByEmail(auth.getName());
+
+        Iterable<Reserva> todasLasReservas = repoReserva.findAll();
+
+        // Si es ADMIN ve todas, si es usuario normal, solo ve las suyas
+        if (usuarioAutenticado.rol == Rol.ADMIN) {
+            return StreamSupport.stream(todasLasReservas.spliterator(), false)
+                    .collect(Collectors.toList());
+        } else {
+            return StreamSupport.stream(todasLasReservas.spliterator(), false)
+                    .filter(r -> r.idUsuario.equals(usuarioAutenticado.id))
+                    .collect(Collectors.toList());
+        }
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Reserva crearReserva(@RequestBody Reserva reserva) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         Usuario usuarioAutenticado = repoUsuario.findByEmail(auth.getName());
 
-        // Usamos los campos públicos de tu equipo: idUsuario, rol, id
         if (usuarioAutenticado.rol == Rol.ADMIN) {
             if (reserva.idUsuario == null) reserva.idUsuario = usuarioAutenticado.id;
         } else {
@@ -43,12 +65,16 @@ public class ReservationController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Pista no encontrada");
         }
 
-        // Cálculo de horaFin usando LocalDateTime
-        if (reserva.horaInicio != null && reserva.duracionMinutos != null) {
-            reserva.horaFin = reserva.horaInicio.plusMinutes(reserva.duracionMinutos);
+        // MEJORA: Evitar que el sistema explote si el frontend no manda la hora
+        if (reserva.horaInicio == null || reserva.duracionMinutos == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Es obligatorio enviar la hora de inicio y la duración");
         }
 
-        // COMPROBACIÓN DE SOLAPAMIENTO (Sincronizada con el repositorio corregido)
+        // Cálculo de horaFin
+        reserva.horaFin = reserva.horaInicio.plusMinutes(reserva.duracionMinutos);
+        reserva.estado = EstadosReserva.ACTIVA; // Nos aseguramos de que nace ACTIVA
+
+        // COMPROBACIÓN DE SOLAPAMIENTO
         boolean ocupado = repoReserva.existsByIdPistaAndEstadoAndHoraInicioLessThanEqualAndHoraFinGreaterThanEqual(
                 reserva.idPista, EstadosReserva.ACTIVA, reserva.horaFin, reserva.horaInicio
         );
@@ -63,9 +89,19 @@ public class ReservationController {
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void cancelarReserva(@PathVariable Long id) {
-        if (!repoReserva.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Reserva no encontrada");
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        Usuario usuarioAutenticado = repoUsuario.findByEmail(auth.getName());
+
+        Reserva reserva = repoReserva.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reserva no encontrada"));
+
+        // MEJORA SEGURIDAD: Comprobamos que la reserva es suya o es un ADMIN
+        if (usuarioAutenticado.rol != Rol.ADMIN && !reserva.idUsuario.equals(usuarioAutenticado.id)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes permiso para cancelar esta reserva");
         }
-        repoReserva.deleteById(id);
+
+        // Hacemos un "Soft Delete" cambiándole el estado en vez de borrarla de la base de datos
+        reserva.estado = EstadosReserva.CANCELADA;
+        repoReserva.save(reserva);
     }
 }
