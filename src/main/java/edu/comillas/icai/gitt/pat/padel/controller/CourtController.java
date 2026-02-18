@@ -23,6 +23,13 @@ public class CourtController {
     @Autowired
     private RepoReserva repoReserva;
 
+    // NUEVO MÉTODO: Ver todas las pistas
+    @GetMapping
+    public Iterable<Pista> getAllCourts() {
+        return repoPista.findAll();
+    }
+
+    // MÉTODO EXISTENTE: Borrar pista
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deletePista(@PathVariable Long id) {
@@ -41,6 +48,7 @@ public class CourtController {
         repoPista.save(pista);
     }
 
+    // MÉTODO EXISTENTE: Ver reservas de una pista
     @GetMapping("/{id}/reservations")
     public List<Reserva> getReservations(@PathVariable Long id, @RequestParam LocalDateTime date) {
         Pista pista = repoPista.findById(id)
