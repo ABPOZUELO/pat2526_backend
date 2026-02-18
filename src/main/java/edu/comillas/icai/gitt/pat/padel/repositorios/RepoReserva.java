@@ -8,29 +8,26 @@ import java.util.List;
 
 public interface RepoReserva extends CrudRepository<Reserva, Long> {
 
-    // El método que usa TU controlador
+    // 1. Para TU controlador (ReservationController)
     boolean existsByIdPistaAndEstadoAndHoraInicioLessThanEqualAndHoraFinGreaterThanEqual(
             Long idPista, EstadosReserva estado, LocalDateTime horaFin, LocalDateTime horaInicio
     );
 
-    // El método que falta y que hace que falle el CourtController
-    boolean existsByIdPistaAndEstadoActivoAndHoraFinGreaterThanEqual(
+    // 2. Para el CourtController (Comprobar si hay reservas para poder borrar la pista)
+    boolean existsByIdPistaAndEstadoAndHoraFinGreaterThanEqual(
             Long idPista, EstadosReserva estado, LocalDateTime horaFin
     );
 
-    // Métodos para el AdminController que ya pusimos antes
-    List<Reserva> findByIdPistaAndIdUsuarioAndHoraInicioGreaterThanEqualAndHoraInicioLessThan(
-            Long idPista, Long idUsuario, LocalDateTime inicio, LocalDateTime fin
+    // 3. Para el listado de reservas por pista
+    List<Reserva> findByIdPistaAndEstadoAndHoraInicioGreaterThanEqualAndHoraInicioLessThanOrderByHoraInicioAsc(
+            Long idPista, EstadosReserva estado, LocalDateTime inicio, LocalDateTime fin
     );
-    List<Reserva> findByIdPistaAndHoraInicioGreaterThanEqualAndHoraInicioLessThan(
-            Long idPista, LocalDateTime inicio, LocalDateTime fin
-    );
-    List<Reserva> findByIdUsuarioAndHoraInicioGreaterThanEqualAndHoraInicioLessThan(
-            Long idUsuario, LocalDateTime inicio, LocalDateTime fin
-    );
-    List<Reserva> findByHoraInicioGreaterThanEqualAndHoraInicioLessThan(
-            LocalDateTime inicio, LocalDateTime fin
-    );
+
+    // 4. Métodos para el AdminController
+    List<Reserva> findByIdPistaAndIdUsuarioAndHoraInicioGreaterThanEqualAndHoraInicioLessThan(Long idPista, Long idUsuario, LocalDateTime inicio, LocalDateTime fin);
+    List<Reserva> findByIdPistaAndHoraInicioGreaterThanEqualAndHoraInicioLessThan(Long idPista, LocalDateTime inicio, LocalDateTime fin);
+    List<Reserva> findByIdUsuarioAndHoraInicioGreaterThanEqualAndHoraInicioLessThan(Long idUsuario, LocalDateTime inicio, LocalDateTime fin);
+    List<Reserva> findByHoraInicioGreaterThanEqualAndHoraInicioLessThan(LocalDateTime inicio, LocalDateTime fin);
     List<Reserva> findByIdPistaAndIdUsuario(Long idPista, Long idUsuario);
     List<Reserva> findByIdPista(Long idPista);
     List<Reserva> findByIdUsuario(Long idUsuario);
